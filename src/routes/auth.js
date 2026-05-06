@@ -10,6 +10,19 @@ const ROLE_MAP = {
   triso_admin: 'admin',
 };
 
+router.post('/check-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+
+  try {
+    const { rows } = await pool.query('SELECT 1 FROM users WHERE email = $1', [email]);
+    res.json({ exists: rows.length > 0 });
+  } catch (err) {
+    console.error('Check email error:', err);
+    res.status(500).json({ error: 'Error interno' });
+  }
+});
+
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
