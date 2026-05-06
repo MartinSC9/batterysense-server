@@ -13,7 +13,7 @@ app.use(express.json());
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-app.use('/auth', authRoutes);
-app.use('/devices', deviceRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/devices', deviceRoutes);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
