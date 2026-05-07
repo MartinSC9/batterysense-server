@@ -97,4 +97,98 @@ router.get('/mine/variables/:label/values', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/devices/mine/variables/:label/stats?period=today|week|month
+router.get('/mine/variables/:label/stats', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT ubidots_device_id FROM users WHERE id = $1', [req.user.id]);
+    const ubidotsDeviceId = rows[0]?.ubidots_device_id;
+
+    if (!ubidotsDeviceId) {
+      return res.status(404).json({ error: 'No tenes un concentrador asignado' });
+    }
+
+    const { label } = req.params;
+    if (!LABEL_RE.test(label)) {
+      return res.status(400).json({ error: 'Label invalido' });
+    }
+
+    const variables = await ubidots.getDeviceVariables(ubidotsDeviceId);
+    const variable = variables.find(v => v.label === label);
+    if (!variable) {
+      return res.status(404).json({ error: 'Variable no encontrada' });
+    }
+
+    const period = req.query.period || 'today';
+    const now = Date.now();
+    let start;
+    if (period === 'today') {
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      start = d.getTime();
+    } else {
+      const periodMs = { hour: 3600000, week: 604800000, month: 2592000000 };
+      start = now - (periodMs[period] || 86400000);
+    }
+
+    const rawValues = await ubidots.getVariableValues(variable.id, {
+      start, end: now, limit: 5000,
+    });
+    const vals = filterOutliers(rawValues, label).sort((a, b) => a.timestamp - b.timestamp);
+
+    if (!vals.length) {
+      return res.json({ variable: label, period, min: null, max: null, avg: null, count: 0, points: [] });
+    }
+
+    const allValues = vals.map(v => v.value);
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    const avg = allValues.reduce((s, v) => s + v, 0) / allValues.length;
+
+    let points;
+    if (period === 'today' || period === 'hour') {
+      // Raw points
+      points = vals.map(v => ({
+        timestamp: v.timestamp,
+        value: Number(v.value.toFixed(1)),
+      }));
+    } else {
+      // Aggregate by day
+      const days = period === 'week' ? 7 : 30;
+      const dayBuckets = {};
+      for (let d = days - 1; d >= 0; d--) {
+        const date = new Date(now - d * 86400000);
+        const key = date.toISOString().slice(0, 10);
+        dayBuckets[key] = [];
+      }
+      vals.forEach(v => {
+        const key = new Date(v.timestamp).toISOString().slice(0, 10);
+        if (dayBuckets[key]) dayBuckets[key].push(v.value);
+      });
+
+      points = Object.entries(dayBuckets)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .filter(([, b]) => b.length > 0)
+        .map(([date, values]) => ({
+          date,
+          avg: Number((values.reduce((s, v) => s + v, 0) / values.length).toFixed(1)),
+          min: Number(Math.min(...values).toFixed(1)),
+          max: Number(Math.max(...values).toFixed(1)),
+          readings: values.length,
+        }));
+    }
+
+    res.json({
+      variable: label,
+      period,
+      min: Number(min.toFixed(1)),
+      max: Number(max.toFixed(1)),
+      avg: Number(avg.toFixed(1)),
+      count: vals.length,
+      points,
+    });
+  } catch (err) {
+    console.error('devices/variables/stats error:', err);
+    res.status(500).json({ error: 'Error calculando estadísticas' });
+  }
+});
+
 module.exports = router;
