@@ -11,7 +11,7 @@ async function seed() {
         ('Admin TRISO', 'admin@triso.com', $1, 'triso_admin', NULL),
         ('Técnico TRISO', 'tecnico@triso.com', $1, 'triso_tecnico', NULL),
         ('Ricardo Juarez', 'rjuarez@telecom-cba.com.ar', $1, 'cliente_admin', '696fff8f7a593a3f8b426592'),
-        ('Usuario Demo', 'demo@batterysense.com', $1, 'cliente_admin', '696fff8f7a593a3f8b426592')
+        ('Usuario Demo', 'demo@bs.com', $1, 'cliente_admin', '696fff8f7a593a3f8b426592')
       ON CONFLICT (email) DO NOTHING
     `, [hash]);
 
