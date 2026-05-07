@@ -119,11 +119,15 @@ router.get('/mine/variables/:label/stats', authenticate, async (req, res) => {
     }
 
     const period = req.query.period || 'today';
+    const tzOffset = parseInt(req.query.tz) || -180; // default Argentina UTC-3 = -180 min
     const now = Date.now();
     let start;
     if (period === 'today') {
-      const d = new Date(); d.setHours(0, 0, 0, 0);
-      start = d.getTime();
+      // Inicio del día en la zona horaria del cliente
+      const clientNow = new Date(now - tzOffset * 60000);
+      const midnight = new Date(clientNow);
+      midnight.setUTCHours(0, 0, 0, 0);
+      start = midnight.getTime() + tzOffset * 60000;
     } else {
       const periodMs = { hour: 3600000, week: 604800000, month: 2592000000 };
       start = now - (periodMs[period] || 86400000);
