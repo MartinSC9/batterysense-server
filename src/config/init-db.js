@@ -11,26 +11,6 @@ const schema = `
     ubidots_device_id VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
-
-  CREATE TABLE IF NOT EXISTS devices (
-    id SERIAL PRIMARY KEY,
-    ubidots_id VARCHAR(50) UNIQUE,
-    label VARCHAR(100) NOT NULL,
-    name VARCHAR(150),
-    owner_id INT REFERENCES users(id),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS device_variables (
-    id SERIAL PRIMARY KEY,
-    device_id INT REFERENCES devices(id) ON DELETE CASCADE,
-    ubidots_id VARCHAR(50) UNIQUE,
-    label VARCHAR(100) NOT NULL,
-    name VARCHAR(150),
-    last_value JSONB,
-    last_activity TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  );
 `;
 
 async function init() {
