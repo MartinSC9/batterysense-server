@@ -8,6 +8,7 @@ const schema = `
     email VARCHAR(150) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(30) NOT NULL DEFAULT 'cliente_user',
+    ubidots_device_id VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW()
   );
 
