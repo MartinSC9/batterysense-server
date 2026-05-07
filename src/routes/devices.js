@@ -27,6 +27,18 @@ function filterOutliers(values, label) {
   return values.filter(v => v.value >= limits.min && v.value <= limits.max);
 }
 
+// IQR-based statistical outlier removal
+function filterIQR(values) {
+  if (values.length < 4) return values;
+  const sorted = values.map(v => v.value).sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+  return values.filter(v => v.value >= lower && v.value <= upper);
+}
+
 // GET /api/devices/mine/variables
 router.get('/mine/variables', authenticate, async (req, res) => {
   try {
@@ -136,7 +148,8 @@ router.get('/mine/variables/:label/stats', authenticate, async (req, res) => {
     const rawValues = await ubidots.getVariableValues(variable.id, {
       start, end: now, limit: 5000,
     });
-    const vals = filterOutliers(rawValues, label).sort((a, b) => a.timestamp - b.timestamp);
+    const rangeFiltered = filterOutliers(rawValues, label);
+    const vals = filterIQR(rangeFiltered).sort((a, b) => a.timestamp - b.timestamp);
 
     if (!vals.length) {
       return res.json({ variable: label, period, min: null, max: null, avg: null, count: 0, points: [] });
