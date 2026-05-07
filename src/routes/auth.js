@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const pool = require('../config/db');
 
 const ROLE_MAP = {
@@ -10,7 +11,16 @@ const ROLE_MAP = {
   triso_admin: 'admin',
 };
 
-router.post('/check-email', async (req, res) => {
+// Rate limit estricto para auth — 10 intentos / 15 min por IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos, espera 15 minutos' },
+});
+
+router.post('/check-email', authLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email requerido' });
 
@@ -23,7 +33,7 @@ router.post('/check-email', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email y contraseña requeridos' });
